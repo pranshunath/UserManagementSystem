@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+.dockerignore
+*.md
+web/node_modules
+web/dist
+tests/
+tmp/
+.bin/
+dist/
+build/
+*.exe
