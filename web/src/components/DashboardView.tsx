@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { User, Department, Role } from '../api/types';
 import {
   Users,
@@ -13,7 +13,11 @@ import {
   Activity,
   CheckCircle2,
   Clock,
-  Radio,
+  Sparkles,
+  UserCheck,
+  RefreshCw,
+  CircleCheck,
+  Gauge,
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -33,35 +37,67 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   totalUserCount,
   isLoading,
   onNavigateToUsers,
+  onRefresh,
 }) => {
   const [latency, setLatency] = useState<number | null>(null);
   const [isPinging, setIsPinging] = useState(false);
 
-  // Calculate statistics
-  const activeUsersCount = users.filter((u) => u.status === 'active').length;
-  const inactiveUsersCount = users.filter((u) => u.status === 'inactive').length;
-  const activeRate = users.length > 0 ? Math.round((activeUsersCount / users.length) * 100) : 100;
+  const activeUsersCount = users.filter(
+    (u) => u.status === 'active'
+  ).length;
 
-  // Department distribution
-  const deptDistribution = departments.map((d) => {
-    const count = users.filter((u) => u.department_id === d.id).length;
-    const percentage = users.length > 0 ? Math.round((count / users.length) * 100) : 0;
-    return { ...d, count, percentage };
+  const inactiveUsersCount = users.filter(
+    (u) => u.status === 'inactive'
+  ).length;
+
+  const activeRate =
+    users.length > 0
+      ? Math.round((activeUsersCount / users.length) * 100)
+      : 100;
+
+  const deptDistribution = departments.map((department) => {
+    const count = users.filter(
+      (user) => user.department_id === department.id
+    ).length;
+
+    const percentage =
+      users.length > 0
+        ? Math.round((count / users.length) * 100)
+        : 0;
+
+    return {
+      ...department,
+      count,
+      percentage,
+    };
   });
 
-  const unassignedCount = users.filter((u) => !u.department_id).length;
-  const unassignedPercentage = users.length > 0 ? Math.round((unassignedCount / users.length) * 100) : 0;
+  const unassignedCount = users.filter(
+    (user) => !user.department_id
+  ).length;
 
-  // Measure round-trip ping latency to API Gateway
+  const unassignedPercentage =
+    users.length > 0
+      ? Math.round((unassignedCount / users.length) * 100)
+      : 0;
+
   const pingLatency = async () => {
     setIsPinging(true);
-    const t0 = performance.now();
+
+    const start = performance.now();
+
     try {
-      await fetch(import.meta.env.VITE_HEALTH_URL || 'http://localhost:8080/health', {
-        cache: 'no-store',
-      });
-      const t1 = performance.now();
-      setLatency(Math.round((t1 - t0) * 10) / 10);
+      await fetch(
+        import.meta.env.VITE_HEALTH_URL ||
+        'http://localhost:8080/health',
+        {
+          cache: 'no-store',
+        }
+      );
+
+      const end = performance.now();
+
+      setLatency(Math.round((end - start) * 10) / 10);
     } catch {
       setLatency(null);
     } finally {
@@ -74,389 +110,805 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, []);
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      {/* 1. Header Banner with Live Benchmark Ping */}
-      <div className="glass-panel" style={{
-        padding: '24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.9) 0%, rgba(26, 34, 54, 0.6) 100%)',
-      }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              background: 'rgba(99, 102, 241, 0.15)',
-              color: '#818cf8',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-            }}>
-              <Radio size={12} className={isLoading ? 'spin' : ''} />
-              {isLoading ? 'SYNCING DATA...' : 'LIVE TELEMETRY'}
-            </span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Connected to Gin Gateway (:8080) & gRPC Microservice (:50051)
-            </span>
-          </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>System Intelligence & Architecture Health</h2>
-        </div>
+    <div className="dashboard-page fade-in">
 
-        {/* Live Latency Gauge & Interactive Ping Button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            padding: '8px 16px',
-            borderRadius: 'var(--radius-md)',
-            background: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}>
-            <Zap size={18} color="#06b6d4" />
-            <div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-                API Ping Latency
+      {/* HERO */}
+      <section className="dashboard-hero">
+        <div className="dashboard-hero-glow dashboard-hero-glow-one" />
+        <div className="dashboard-hero-glow dashboard-hero-glow-two" />
+
+        <div className="dashboard-hero-content">
+
+          <div className="dashboard-hero-copy">
+
+            <div className="dashboard-status-pill">
+              <span className="dashboard-status-dot" />
+              SYSTEM OPERATIONAL
+            </div>
+
+            <h1 className="dashboard-hero-title">
+              Good overview.
+              <br />
+              <span>Everything at a glance.</span>
+            </h1>
+
+            <p className="dashboard-hero-description">
+              Monitor users, organizational structure, access
+              control and platform health from one place.
+            </p>
+
+          </div>
+
+          <div className="dashboard-hero-actions">
+
+            <div className="dashboard-latency-card">
+
+              <div className="dashboard-latency-icon">
+                <Activity size={19} />
               </div>
-              <div style={{ fontSize: '1rem', fontWeight: 700, color: latency !== null && latency < 50 ? 'var(--emerald)' : 'var(--amber)' }}>
-                {latency !== null ? `${latency} ms` : 'Measuring...'}
+
+              <div className="dashboard-latency-content">
+                <span>API LATENCY</span>
+
+                <strong>
+                  {latency !== null
+                    ? `${latency} ms`
+                    : 'Unavailable'}
+                </strong>
+              </div>
+
+              <Gauge
+                size={20}
+                className="dashboard-latency-gauge"
+              />
+
+            </div>
+
+            <div className="dashboard-hero-buttons">
+
+              <button
+                onClick={pingLatency}
+                disabled={isPinging}
+                className="dashboard-primary-button"
+              >
+                <Zap size={17} />
+
+                {isPinging
+                  ? 'Checking...'
+                  : 'Check API'}
+              </button>
+
+              <button
+                onClick={onRefresh}
+                disabled={isLoading}
+                className="dashboard-icon-button"
+                title="Refresh dashboard"
+              >
+                <RefreshCw
+                  size={18}
+                  className={
+                    isLoading
+                      ? 'dashboard-spin'
+                      : ''
+                  }
+                />
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* METRICS */}
+      <section className="dashboard-metrics">
+
+        {/* Total Users */}
+        <div className="dashboard-stat-card stat-indigo">
+
+          <div className="dashboard-stat-top">
+
+            <div>
+              <span className="dashboard-stat-label">
+                Total users
+              </span>
+
+              <div className="dashboard-stat-value">
+                {totalUserCount}
               </div>
             </div>
+
+            <div className="dashboard-stat-icon">
+              <Users size={21} />
+            </div>
+
+          </div>
+
+          <div className="dashboard-stat-footer">
+            <UserCheck size={14} />
+
+            <span>
+              {activeUsersCount} active accounts
+            </span>
+          </div>
+
+        </div>
+
+        {/* Departments */}
+        <div className="dashboard-stat-card stat-cyan">
+
+          <div className="dashboard-stat-top">
+
+            <div>
+              <span className="dashboard-stat-label">
+                Departments
+              </span>
+
+              <div className="dashboard-stat-value">
+                {departments.length}
+              </div>
+            </div>
+
+            <div className="dashboard-stat-icon">
+              <Building2 size={21} />
+            </div>
+
+          </div>
+
+          <div className="dashboard-stat-footer neutral">
+            <CircleCheck size={14} />
+
+            <span>
+              Organizational units
+            </span>
+          </div>
+
+        </div>
+
+        {/* Roles */}
+        <div className="dashboard-stat-card stat-amber">
+
+          <div className="dashboard-stat-top">
+
+            <div>
+              <span className="dashboard-stat-label">
+                Security roles
+              </span>
+
+              <div className="dashboard-stat-value">
+                {roles.length}
+              </div>
+            </div>
+
+            <div className="dashboard-stat-icon">
+              <ShieldCheck size={21} />
+            </div>
+
+          </div>
+
+          <div className="dashboard-stat-footer neutral">
+            <CircleCheck size={14} />
+
+            <span>
+              Access control roles
+            </span>
+          </div>
+
+        </div>
+
+        {/* Active Rate */}
+        <div className="dashboard-stat-card stat-emerald">
+
+          <div className="dashboard-stat-top">
+
+            <div>
+              <span className="dashboard-stat-label">
+                Active rate
+              </span>
+
+              <div className="dashboard-stat-value">
+                {activeRate}%
+              </div>
+            </div>
+
+            <div className="dashboard-stat-icon">
+              <TrendingUp size={21} />
+            </div>
+
+          </div>
+
+          <div className="dashboard-stat-footer success">
+            <TrendingUp size={14} />
+
+            <span>
+              {inactiveUsersCount === 0
+                ? 'All accounts active'
+                : `${inactiveUsersCount} inactive accounts`}
+            </span>
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ANALYTICS */}
+      <section className="dashboard-analytics">
+
+        {/* Department Distribution */}
+        <div className="dashboard-panel department-panel">
+
+          <div className="dashboard-panel-header">
+
+            <div className="dashboard-panel-title-wrap">
+
+              <div className="dashboard-panel-icon cyan">
+                <Building2 size={18} />
+              </div>
+
+              <div>
+                <h2>
+                  Department distribution
+                </h2>
+
+                <p>
+                  Where your users are organized
+                </p>
+              </div>
+
+            </div>
+
+            <span className="dashboard-count-pill">
+              <Users size={13} />
+              {users.length} users
+            </span>
+
+          </div>
+
+          {departments.length === 0 ? (
+
+            <div className="dashboard-empty-state">
+
+              <Building2 size={30} />
+
+              <strong>
+                No departments yet
+              </strong>
+
+              <span>
+                Create departments to see user
+                distribution here.
+              </span>
+
+            </div>
+
+          ) : (
+
+            <div className="department-list">
+
+              {deptDistribution.map(
+                (department, index) => (
+
+                  <div
+                    key={department.id}
+                    className="department-row"
+                  >
+
+                    <div className="department-row-header">
+
+                      <div className="department-name-wrap">
+
+                        <span className="department-index">
+                          {String(index + 1).padStart(
+                            2,
+                            '0'
+                          )}
+                        </span>
+
+                        <strong>
+                          {department.name}
+                        </strong>
+
+                      </div>
+
+                      <span className="department-count">
+                        {department.count} users
+                        <b>
+                          {department.percentage}%
+                        </b>
+                      </span>
+
+                    </div>
+
+                    <div className="department-progress">
+
+                      <div
+                        className="department-progress-fill"
+                        style={{
+                          width: `${department.percentage}%`,
+                        }}
+                      />
+
+                    </div>
+
+                  </div>
+                )
+              )}
+
+              {unassignedCount > 0 && (
+
+                <div className="department-row unassigned">
+
+                  <div className="department-row-header">
+
+                    <div className="department-name-wrap">
+
+                      <span className="department-index">
+                        --
+                      </span>
+
+                      <strong>
+                        Unassigned
+                      </strong>
+
+                    </div>
+
+                    <span className="department-count">
+                      {unassignedCount} users
+                      <b>
+                        {unassignedPercentage}%
+                      </b>
+                    </span>
+
+                  </div>
+
+                  <div className="department-progress">
+
+                    <div
+                      className="department-progress-fill"
+                      style={{
+                        width:
+                          `${unassignedPercentage}%`,
+                      }}
+                    />
+
+                  </div>
+
+                </div>
+
+              )}
+
+            </div>
+
+          )}
+
+        </div>
+
+        {/* Account Health */}
+        <div className="dashboard-panel health-panel">
+
+          <div className="dashboard-panel-header">
+
+            <div className="dashboard-panel-title-wrap">
+
+              <div className="dashboard-panel-icon green">
+                <ShieldCheck size={18} />
+              </div>
+
+              <div>
+                <h2>
+                  Account health
+                </h2>
+
+                <p>
+                  Current account status
+                </p>
+              </div>
+
+            </div>
+
+            <span className="health-status">
+              <span />
+              Healthy
+            </span>
+
+          </div>
+
+          <div className="health-main">
+
+            <div
+              className="health-ring"
+              style={{
+                background: `conic-gradient(
+                  var(--emerald) ${activeRate}%,
+                  rgba(244,63,94,0.14)
+                  ${activeRate}% 100%
+                )`,
+              }}
+            >
+
+              <div className="health-ring-inner">
+
+                <strong>
+                  {activeRate}%
+                </strong>
+
+                <span>
+                  ACTIVE
+                </span>
+
+              </div>
+
+            </div>
+
+            <div className="health-legend">
+
+              <div className="health-legend-item">
+
+                <span className="legend-dot active" />
+
+                <div>
+                  <strong>
+                    {activeUsersCount}
+                  </strong>
+
+                  <span>
+                    Active
+                  </span>
+                </div>
+
+              </div>
+
+              <div className="health-legend-item">
+
+                <span className="legend-dot inactive" />
+
+                <div>
+                  <strong>
+                    {inactiveUsersCount}
+                  </strong>
+
+                  <span>
+                    Inactive
+                  </span>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div className="health-checks">
+
+            {[
+              'REST Gateway connected',
+              'Request tracing enabled',
+              'Password data protected',
+              'Soft-delete filtering enabled',
+            ].map((item) => (
+
+              <div
+                key={item}
+                className="health-check"
+              >
+
+                <CheckCircle2 size={14} />
+
+                <span>
+                  {item}
+                </span>
+
+              </div>
+
+            ))}
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* INFRASTRUCTURE */}
+      <section className="dashboard-panel infrastructure-panel">
+
+        <div className="dashboard-panel-header">
+
+          <div className="dashboard-panel-title-wrap">
+
+            <div className="dashboard-panel-icon purple">
+              <Layers size={18} />
+            </div>
+
+            <div>
+              <h2>
+                Platform infrastructure
+              </h2>
+
+              <p>
+                Distributed services currently connected
+              </p>
+            </div>
+
+          </div>
+
+          <span className="infrastructure-status">
+            <span className="dashboard-status-dot" />
+            ALL SYSTEMS ONLINE
+          </span>
+
+        </div>
+
+        <div className="infrastructure-grid">
+
+          {[
+            {
+              name: 'API Gateway',
+              icon: <Server size={17} />,
+              color: 'indigo',
+              host: 'localhost:8080',
+              description:
+                'Gin REST gateway with Request ID & CORS',
+            },
+            {
+              name: 'User Microservice',
+              icon: <Layers size={17} />,
+              color: 'cyan',
+              host: 'localhost:50051',
+              description:
+                'Protobuf v3 over HTTP/2',
+            },
+            {
+              name: 'Redis 7 Cache',
+              icon: <Database size={17} />,
+              color: 'rose',
+              host: 'localhost:6380',
+              description:
+                'Cache-aside GetByID queries',
+            },
+            {
+              name: 'PostgreSQL 16',
+              icon: <Database size={17} />,
+              color: 'green',
+              host: 'localhost:5432',
+              description:
+                'ACID relational storage',
+            },
+          ].map((service) => (
+
+            <div
+              key={service.name}
+              className={`infrastructure-card infra-${service.color}`}
+            >
+
+              <div className="infrastructure-card-top">
+
+                <div className="infrastructure-icon">
+                  {service.icon}
+                </div>
+
+                <span className="online-dot">
+                  ONLINE
+                </span>
+
+              </div>
+
+              <strong>
+                {service.name}
+              </strong>
+
+              <span className="infrastructure-host">
+                {service.host}
+              </span>
+
+              <p>
+                {service.description}
+              </p>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      </section>
+
+      {/* RECENT USERS */}
+      <section className="dashboard-panel recent-users-panel">
+
+        <div className="dashboard-panel-header">
+
+          <div className="dashboard-panel-title-wrap">
+
+            <div className="dashboard-panel-icon indigo">
+              <Users size={18} />
+            </div>
+
+            <div>
+              <h2>
+                Recent users
+              </h2>
+
+              <p>
+                Latest accounts in the directory
+              </p>
+            </div>
+
           </div>
 
           <button
-            onClick={pingLatency}
-            disabled={isPinging}
-            className="btn btn-secondary"
-            style={{ padding: '10px 14px' }}
+            onClick={onNavigateToUsers}
+            className="dashboard-outline-button"
           >
-            <Activity size={16} className={isPinging ? 'spin' : ''} />
-            <span>{isPinging ? 'Pinging...' : 'Benchmark Ping'}</span>
+            Open User Directory
+            <ArrowUpRight size={15} />
           </button>
-        </div>
-      </div>
 
-      {/* 2. Primary Telemetry Metric Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-        {/* Metric 1: Total Users */}
-        <div className="glass-panel glass-panel-hover" style={{ padding: '22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8125rem', fontWeight: 500 }}>Total Accounts</span>
-            <div style={{ color: '#818cf8', background: 'var(--primary-subtle)', padding: '8px', borderRadius: '8px' }}>
-              <Users size={20} />
-            </div>
-          </div>
-          <div style={{ fontSize: '2.25rem', fontWeight: 700, fontFamily: 'var(--font-heading)' }}>
-            {totalUserCount}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-            <span style={{ color: 'var(--emerald)', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-              <TrendingUp size={14} style={{ marginRight: '3px' }} />
-              {activeRate}% Active
-            </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              ({activeUsersCount} active, {inactiveUsersCount} inactive)
-            </span>
-          </div>
         </div>
 
-        {/* Metric 2: Departments */}
-        <div className="glass-panel glass-panel-hover" style={{ padding: '22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8125rem', fontWeight: 500 }}>Departments</span>
-            <div style={{ color: '#38bdf8', background: 'rgba(6, 182, 212, 0.12)', padding: '8px', borderRadius: '8px' }}>
-              <Building2 size={20} />
-            </div>
-          </div>
-          <div style={{ fontSize: '2.25rem', fontWeight: 700, fontFamily: 'var(--font-heading)' }}>
-            {departments.length}
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
-            {departments.length > 0
-              ? `Avg ${Math.round(totalUserCount / departments.length)} users per department`
-              : 'No departments created yet'}
-          </div>
-        </div>
+        <div className="dashboard-table-wrapper">
 
-        {/* Metric 3: Roles */}
-        <div className="glass-panel glass-panel-hover" style={{ padding: '22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8125rem', fontWeight: 500 }}>Security Roles</span>
-            <div style={{ color: '#f59e0b', background: 'var(--amber-bg)', padding: '8px', borderRadius: '8px' }}>
-              <ShieldCheck size={20} />
-            </div>
-          </div>
-          <div style={{ fontSize: '2.25rem', fontWeight: 700, fontFamily: 'var(--font-heading)' }}>
-            {roles.length}
-          </div>
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '8px' }}>
-            {roles.map((r) => (
-              <span key={r.id} className="badge badge-role" style={{ fontSize: '0.7rem' }}>
-                {r.name}
-              </span>
-            ))}
-          </div>
-        </div>
+          <table className="dashboard-table">
 
-        {/* Metric 4: Cache Health */}
-        <div className="glass-panel glass-panel-hover" style={{ padding: '22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8125rem', fontWeight: 500 }}>Cache Strategy</span>
-            <div style={{ color: '#f43f5e', background: 'var(--rose-bg)', padding: '8px', borderRadius: '8px' }}>
-              <Database size={20} />
-            </div>
-          </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--emerald)' }}>
-            Cache-Aside Active
-          </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
-            Redis 7 on Port <strong>:6380</strong> with 10m TTL & automatic mutation invalidation
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Two Column Visual Analytics Breakdown */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-        {/* Left Column: Department Headcount Distribution */}
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Building2 size={18} color="#06b6d4" />
-              Department Headcount Distribution
-            </h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{users.length} Users Sampled</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {deptDistribution.map((d) => (
-              <div key={d.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
-                  <span style={{ fontWeight: 500 }}>{d.name}</span>
-                  <span style={{ color: 'var(--text-muted)' }}>
-                    {d.count} users ({d.percentage}%)
-                  </span>
-                </div>
-                {/* Progress bar */}
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${d.percentage}%`,
-                      background: 'linear-gradient(90deg, #6366f1, #06b6d4)',
-                      borderRadius: '4px',
-                      transition: 'width 0.4s ease',
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-
-            {unassignedCount > 0 && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Unassigned Department</span>
-                  <span style={{ color: 'var(--text-muted)' }}>
-                    {unassignedCount} users ({unassignedPercentage}%)
-                  </span>
-                </div>
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${unassignedPercentage}%`,
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      borderRadius: '4px',
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Account Status & Governance Split */}
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShieldCheck size={18} color="#10b981" />
-              Account Status & Security Governance
-            </h3>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Security Invariant Check</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Status Split Bar */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '8px' }}>
-                <span style={{ color: 'var(--emerald)', fontWeight: 600 }}>Active ({activeUsersCount})</span>
-                <span style={{ color: 'var(--rose)', fontWeight: 600 }}>Inactive ({inactiveUsersCount})</span>
-              </div>
-              <div style={{ display: 'flex', width: '100%', height: '12px', borderRadius: '6px', overflow: 'hidden', gap: '2px' }}>
-                <div style={{ width: `${activeRate}%`, background: 'var(--emerald)', transition: 'width 0.4s ease' }} title={`Active: ${activeRate}%`} />
-                <div style={{ width: `${100 - activeRate}%`, background: 'var(--rose)', transition: 'width 0.4s ease' }} title={`Inactive: ${100 - activeRate}%`} />
-              </div>
-            </div>
-
-            {/* Architecture Governance Checklist */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
-                <CheckCircle2 size={16} color="var(--emerald)" />
-                <span>REST Gateway decoupled from database (gRPC only)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
-                <CheckCircle2 size={16} color="var(--emerald)" />
-                <span>Zero password hashes serialized to JSON or Protobuf</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
-                <CheckCircle2 size={16} color="var(--emerald)" />
-                <span>Distributed Request ID tracing passed across HTTP/gRPC</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
-                <CheckCircle2 size={16} color="var(--emerald)" />
-                <span>Soft-delete preservation (SQL <code>deleted_at</code> filtering)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Distributed Tier Node Topology Status */}
-      <div className="glass-panel" style={{ padding: '24px' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Layers size={18} color="#6366f1" />
-          Full-Stack Distributed Tier Architecture
-        </h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-          {/* Node 1: API Gateway */}
-          <div style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 600, color: '#818cf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Server size={16} /> API Gateway
-              </span>
-              <span className="badge badge-active" style={{ fontSize: '0.65rem' }}>ONLINE</span>
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Host: <code>localhost:8080</code></div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Gin HTTP/1.1 REST with Request ID & CORS</div>
-          </div>
-
-          {/* Node 2: gRPC Microservice */}
-          <div style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 600, color: '#06b6d4', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Layers size={16} /> User Microservice
-              </span>
-              <span className="badge badge-active" style={{ fontSize: '0.65rem' }}>ONLINE</span>
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Host: <code>localhost:50051</code></div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Protobuf v3 over HTTP/2 with Unary Logging</div>
-          </div>
-
-          {/* Node 3: Redis */}
-          <div style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 600, color: '#f43f5e', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Database size={16} /> Redis 7 Cache
-              </span>
-              <span className="badge badge-active" style={{ fontSize: '0.65rem' }}>ONLINE</span>
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Host: <code>localhost:6380</code></div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Cache-Aside for GetByID queries with 10m TTL</div>
-          </div>
-
-          {/* Node 4: PostgreSQL */}
-          <div style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 600, color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Database size={16} /> PostgreSQL 16
-              </span>
-              <span className="badge badge-active" style={{ fontSize: '0.65rem' }}>ONLINE</span>
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Host: <code>localhost:5432</code></div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>ACID Relational Storage & Many-to-Many Junction</div>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Live Recent Users Table */}
-      <div className="glass-panel" style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Recent Users Activity</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Latest synchronized accounts from PostgreSQL</p>
-          </div>
-          <button onClick={onNavigateToUsers} className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '6px 14px' }}>
-            <span>Open User Directory</span>
-            <ArrowUpRight size={14} />
-          </button>
-        </div>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '10px 14px' }}>ID</th>
-                <th style={{ padding: '10px 14px' }}>NAME & EMAIL</th>
-                <th style={{ padding: '10px 14px' }}>DEPARTMENT</th>
-                <th style={{ padding: '10px 14px' }}>STATUS</th>
-                <th style={{ padding: '10px 14px' }}>ROLES</th>
-                <th style={{ padding: '10px 14px' }}>CREATED</th>
+              <tr>
+                <th>ID</th>
+                <th>USER</th>
+                <th>DEPARTMENT</th>
+                <th>STATUS</th>
+                <th>ROLES</th>
+                <th>CREATED</th>
               </tr>
             </thead>
+
             <tbody>
-              {users.slice(0, 8).map((u) => (
-                <tr key={u.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                  <td style={{ padding: '12px 14px', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                    #{u.id}
+
+              {users.slice(0, 8).map((user) => (
+
+                <tr key={user.id}>
+
+                  <td className="user-id">
+                    #{user.id}
                   </td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <div style={{ fontWeight: 600 }}>{u.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{u.email}</div>
-                  </td>
-                  <td style={{ padding: '12px 14px' }}>
-                    {u.department ? (
-                      <span className="badge badge-dept">{u.department.name}</span>
-                    ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Unassigned</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <span className={`badge ${u.status === 'active' ? 'badge-active' : 'badge-inactive'}`}>
-                      {u.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {u.roles && u.roles.length > 0 ? (
-                        u.roles.map((r) => (
-                          <span key={r.id} className="badge badge-role" style={{ fontSize: '0.7rem' }}>
-                            {r.name}
-                          </span>
-                        ))
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>None</span>
-                      )}
+
+                  <td>
+
+                    <div className="user-cell">
+
+                      <div className="user-avatar">
+                        {user.name
+                          .trim()
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+
+                      <div className="user-details">
+
+                        <strong>
+                          {user.name}
+                        </strong>
+
+                        <span>
+                          {user.email}
+                        </span>
+
+                      </div>
+
                     </div>
+
                   </td>
-                  <td style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={12} />
-                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Recent'}
+
+                  <td>
+
+                    {user.department ? (
+
+                      <span className="table-badge department">
+                        {user.department.name}
+                      </span>
+
+                    ) : (
+
+                      <span className="table-muted">
+                        Unassigned
+                      </span>
+
+                    )}
+
+                  </td>
+
+                  <td>
+
+                    <span
+                      className={`table-badge ${user.status === 'active'
+                        ? 'active'
+                        : 'inactive'
+                        }`}
+                    >
+                      <span />
+                      {user.status}
                     </span>
+
                   </td>
+
+                  <td>
+
+                    <div className="role-list">
+
+                      {user.roles &&
+                        user.roles.length > 0 ? (
+
+                        user.roles.map((role) => (
+
+                          <span
+                            key={role.id}
+                            className="table-badge role"
+                          >
+                            {role.name}
+                          </span>
+
+                        ))
+
+                      ) : (
+
+                        <span className="table-muted">
+                          None
+                        </span>
+
+                      )}
+
+                    </div>
+
+                  </td>
+
+                  <td>
+
+                    <span className="created-date">
+
+                      <Clock size={12} />
+
+                      {user.created_at
+                        ? new Date(
+                          user.created_at
+                        ).toLocaleDateString()
+                        : 'Recent'}
+
+                    </span>
+
+                  </td>
+
                 </tr>
+
               ))}
+
+              {users.length === 0 && (
+
+                <tr>
+
+                  <td
+                    colSpan={6}
+                    className="dashboard-table-empty"
+                  >
+
+                    <Sparkles size={22} />
+
+                    <span>
+                      No users available yet.
+                    </span>
+
+                  </td>
+
+                </tr>
+
+              )}
+
             </tbody>
+
           </table>
+
         </div>
-      </div>
+
+      </section>
+
     </div>
   );
 };
