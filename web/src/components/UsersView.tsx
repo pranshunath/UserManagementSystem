@@ -37,6 +37,7 @@ const UsersView: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [departmentId, setDepartmentId] = useState('');
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
@@ -102,6 +103,7 @@ const UsersView: React.FC = () => {
     setName('');
     setEmail('');
     setPassword('');
+    setShowPassword(false);
     setDepartmentId('');
     setSelectedRoleIds([]);
     setStatus('active');
@@ -109,9 +111,14 @@ const UsersView: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (saving) return;
     if (!name.trim() || !email.trim() || !password) {
       setError('Name, email and password are required.');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
 
@@ -377,7 +384,7 @@ const UsersView: React.FC = () => {
               style={{
                 display: 'grid',
                 gridTemplateColumns:
-                  'repeat(2, minmax(0, 1fr))',
+                  'repeat(auto-fit, minmax(260px, 1fr))',
                 gap: '16px',
               }}
             >
@@ -390,25 +397,55 @@ const UsersView: React.FC = () => {
                 />
               </Field>
 
-              <Field label="Email address">
+              <Field label="Email address *">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
+                  autoComplete="email"
+                  required
                   style={inputStyle}
                 />
               </Field>
 
-              <Field label="Password">
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 8 characters"
-                  minLength={8}
-                  style={inputStyle}
-                />
+              <Field label="Password *">
+                <div
+                  style={{
+                    position: 'relative',
+                  }}
+                >
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Minimum 8 characters"
+                    minLength={8}
+                    style={{
+                      ...inputStyle,
+                      paddingRight: '70px',
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((value) => !value)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#8d9ab5',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
               </Field>
 
               <Field label="Department">
@@ -500,7 +537,11 @@ const UsersView: React.FC = () => {
               <button
                 type="submit"
                 disabled={saving}
-                style={primaryButton}
+                style={{
+                  ...primaryButton,
+                  opacity: saving ? 0.65 : 1,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                }}
               >
                 {saving ? 'Creating...' : 'Create User'}
               </button>
@@ -972,7 +1013,7 @@ const UsersView: React.FC = () => {
               </button>
             </div>
 
-            <Field label="Full name">
+            <Field label="Full name *">
               <input
                 value={editName}
                 onChange={(e) =>
@@ -982,7 +1023,7 @@ const UsersView: React.FC = () => {
               />
             </Field>
 
-            <Field label="Email address">
+            <Field label="Email address *">
               <input
                 type="email"
                 value={editEmail}
